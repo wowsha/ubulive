@@ -12,6 +12,7 @@ jobs:
     env:
       ISO_NAME: custom-debian-gnome.iso
       CHROOT_DIR: rootfs
+      ISO_DIR: iso
 
     steps:
       - name: Checkout repo
@@ -22,16 +23,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             debootstrap \
-            qemu-user-static \
             xorriso \
             grub-pc-bin \
             grub-efi-amd64-bin \
             squashfs-tools \
             mtools \
             rsync \
-            syslinux-utils \
+            sudo \
+            tasksel \
             isolinux \
-            squashfs-tools
+            syslinux-utils \
+            curl \
+            vim \
+            qemu-user-static \
+            fakeroot
 
       - name: Create minimal Debian chroot
         run: |
@@ -48,7 +53,8 @@ jobs:
         run: |
           sudo chroot $CHROOT_DIR /bin/bash -c "\
             apt-get update && \
-            apt-get install -y task-gnome-desktop sudo vim curl net-tools && \
+            DEBIAN_FRONTEND=noninteractive apt-get install -y \
+              task-gnome-desktop sudo vim curl net-tools && \
             apt-get clean"
 
       - name: Unmount /proc, /sys, /dev
@@ -59,9 +65,12 @@ jobs:
 
       - name: Prepare ISO structure
         run: |
-          mkdir -p iso/{boot/grub,live}
-          rsync -a $CHROOT_DIR/ iso/live/
-          grub-mkrescue -o $ISO_NAME iso
+          mkdir -p $ISO_DIR/{boot/grub,live}
+          # Copy chroot contents to ISO live folder, excluding virtual FS
+          sudo rsync -a --exclude=/dev --exclude=/proc --exclude=/sys --exclude=/run --exclude=/tmp $CHROOT_DIR/ $ISO_DIR/live/
+          
+          # Create GRUB bootable ISO
+          sudo grub-mkrescue -o $ISO_NAME $ISO_DIR
 
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
