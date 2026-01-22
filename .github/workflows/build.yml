@@ -15,8 +15,8 @@ jobs:
       ISO_DIR: iso
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
@@ -49,7 +49,7 @@ jobs:
           sudo mount --bind /sys $CHROOT_DIR/sys
           sudo mount --bind /dev $CHROOT_DIR/dev
 
-      - name: Install GNOME and utilities inside chroot
+      - name: Install GNOME desktop inside chroot
         run: |
           sudo chroot $CHROOT_DIR /bin/bash -c "\
             apt-get update && \
@@ -66,13 +66,13 @@ jobs:
       - name: Prepare ISO structure
         run: |
           mkdir -p $ISO_DIR/{boot/grub,live}
-          # Copy chroot contents to ISO live folder, excluding virtual FS
+          # Copy chroot contents to ISO live folder, excluding virtual filesystems
           sudo rsync -a --exclude=/dev --exclude=/proc --exclude=/sys --exclude=/run --exclude=/tmp $CHROOT_DIR/ $ISO_DIR/live/
           # Build ISO into workspace so upload works
-          sudo grub-mkrescue -o $GITHUB_WORKSPACE/$ISO_NAME $ISO_DIR
+          sudo grub-mkrescue -o "$GITHUB_WORKSPACE/$ISO_NAME" "$ISO_DIR" --allow-missing-files
 
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
           name: $ISO_NAME
-          path: $GITHUB_WORKSPACE/$ISO_NAME
+          path: "$GITHUB_WORKSPACE/$ISO_NAME"
