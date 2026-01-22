@@ -32,7 +32,9 @@ jobs:
           --binary-images iso-hybrid \
           --debian-installer false \
           --archive-areas "main universe" \
-          --bootappend-live "boot=live persistence=no toram quiet splash"
+          --bootappend-live "boot=live persistence=no toram quiet splash" \
+          --bootloader grub \
+          --syslinux-theme ""
 
         # ---- Remove installer completely ----
         mkdir -p config/package-lists
