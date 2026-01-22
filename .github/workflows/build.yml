@@ -33,7 +33,7 @@ jobs:
           --debian-installer false \
           --archive-areas "main universe" \
           --bootappend-live "boot=live persistence=no toram quiet splash" \
-          --bootloader grub \
+          --bootloader grub2 \
           --syslinux-theme ""
 
         # ---- Remove installer completely ----
