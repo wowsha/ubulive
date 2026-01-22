@@ -68,12 +68,11 @@ jobs:
           mkdir -p $ISO_DIR/{boot/grub,live}
           # Copy chroot contents to ISO live folder, excluding virtual FS
           sudo rsync -a --exclude=/dev --exclude=/proc --exclude=/sys --exclude=/run --exclude=/tmp $CHROOT_DIR/ $ISO_DIR/live/
-          
-          # Create GRUB bootable ISO
-          sudo grub-mkrescue -o $ISO_NAME $ISO_DIR
+          # Build ISO into workspace so upload works
+          sudo grub-mkrescue -o $GITHUB_WORKSPACE/$ISO_NAME $ISO_DIR
 
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
           name: $ISO_NAME
-          path: $ISO_NAME
+          path: $GITHUB_WORKSPACE/$ISO_NAME
