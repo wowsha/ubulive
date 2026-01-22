@@ -1,0 +1,90 @@
+name: Build Secure Ubuntu Noble Live ISO
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          live-build \
+          debootstrap \
+          squashfs-tools \
+          xorriso \
+          grub-pc-bin \
+          grub-efi-amd64-bin
+
+    - name: Configure live-build
+      run: |
+        lb clean
+
+        lb config \
+          --distribution noble \
+          --binary-images iso-hybrid \
+          --debian-installer false \
+          --archive-areas "main universe" \
+          --bootappend-live "boot=live persistence=no toram quiet splash"
+
+        # ---- Remove installer completely ----
+        mkdir -p config/package-lists
+        cat > config/package-lists/remove.list.chroot <<EOF
+        ubiquity
+        ubiquity-casper
+        calamares
+        EOF
+
+        # ---- Minimal desktop + security ----
+        cat > config/package-lists/desktop.list.chroot <<EOF
+        ubuntu-desktop-minimal
+        firefox
+        ufw
+        apparmor
+        network-manager
+        EOF
+
+        # ---- Enable firewall by default ----
+        mkdir -p config/hooks/normal
+        cat > config/hooks/normal/010-firewall.chroot <<'EOF'
+        #!/bin/sh
+        ufw --force enable
+        EOF
+        chmod +x config/hooks/normal/010-firewall.chroot
+
+        # ---- Make internal disks read-only ----
+        mkdir -p config/includes.chroot/etc/udev/rules.d
+        cat > config/includes.chroot/etc/udev/rules.d/99-ro-disks.rules <<EOF
+        SUBSYSTEM=="block", ACTION=="add", RUN+="/bin/mount -o ro"
+        EOF
+
+        # ---- Clear RAM caches on shutdown ----
+        mkdir -p config/includes.chroot/etc/systemd/system
+        cat > config/includes.chroot/etc/systemd/system/ram-wipe.service <<EOF
+        [Unit]
+        Description=Clear RAM caches
+        Before=shutdown.target
+
+        [Service]
+        Type=oneshot
+        ExecStart=/bin/sh -c "echo 3 > /proc/sys/vm/drop_caches"
+
+        [Install]
+        WantedBy=shutdown.target
+        EOF
+
+    - name: Build ISO
+      run: sudo lb build
+
+    - name: Upload ISO
+      uses: actions/upload-artifact@v4
+      with:
+        name: secure-ubuntu-noble-live-iso
+        path: live-image-amd64.hybrid.iso
